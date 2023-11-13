@@ -16,7 +16,7 @@ class CurrencyData(db.Model):
     low_price = db.Column(db.Float, nullable=False)
     close_price = db.Column(db.Float, nullable=False)
     average_price = db.Column(db.Float, nullable=False)
-    related_news = db.relationship('NewsArticle', secondary='currency_news_link')
+    related_news = db.relationship('NewsArticle', secondary='currency_news_link', back_populates='related_currencies')
     def __init__(self, symbol, date, open_price, high_price, low_price, close_price, average_price):
         self.symbol = symbol
         self.date = date
@@ -25,7 +25,8 @@ class CurrencyData(db.Model):
         self.low_price = low_price
         self.close_price = close_price
         self.average_price = average_price
-
+    def __repr__(self):
+        return f"<CurrencyData {self.symbol} {self.date} Open: {self.open_price} High: {self.high_price} Low: {self.low_price} Close: {self.close_price} Average: {self.average_price}>"
 class CommodityData(db.Model):
     __tablename__ = 'commodity_data'
     id = db.Column(db.Integer, primary_key=True)
@@ -33,13 +34,15 @@ class CommodityData(db.Model):
     date = db.Column(db.Date, nullable=False)
     price = db.Column(db.Float, nullable=False)
     unit = db.Column(db.String(50), nullable=True)
-    related_news = db.relationship('NewsArticle', secondary='commodity_news_link')
+    related_news = db.relationship('NewsArticle', secondary='commodity_news_link', back_populates='related_commodities')
 
     def __init__(self, name, date, price, unit):
         self.name = name
         self.date = date
         self.price = price
         self.unit = unit
+    def __repr__(self):
+        return f"<CommodityData {self.name} {self.date} Price: {self.price} Unit: {self.unit}>"
 
 class StockData(db.Model):
     __tablename__ = 'stock_data'
@@ -48,13 +51,15 @@ class StockData(db.Model):
     date = db.Column(db.Date, nullable=False)
     average_price = db.Column(db.Float, nullable=False)
     volume = db.Column(db.BigInteger, nullable=False)  # Wolumen może być dużą liczbą, więc używamy BigInteger
-    related_news = db.relationship('NewsArticle', secondary='stock_news_link')
+    related_news = db.relationship('NewsArticle', secondary='stock_news_link', back_populates='related_stocks')
 
     def __init__(self, symbol, date, average_price, volume):
         self.symbol = symbol
         self.date = datetime.strptime(date, '%Y-%m-%d').date()
         self.average_price = average_price
         self.volume = volume
+    def __repr__(self):
+        return f"<StockData {self.symbol} {self.date} Average Price: {self.average_price} Volume: {self.volume}>"
 
 
 
@@ -76,6 +81,10 @@ class NewsArticle(db.Model):
     related_commodities = db.relationship('CommodityData', secondary='commodity_news_link')
     related_stocks = db.relationship('StockData', secondary='stock_news_link')
 
+    def __repr__(self):
+        return f"<NewsArticle '{self.title}' {self.publication_date}>"
+
+
 class NewsSource(db.Model):
     __tablename__ = 'news_source'
     id = db.Column(db.Integer, primary_key=True)
@@ -86,6 +95,9 @@ class NewsSource(db.Model):
     # Relationship to NewsArticle
     articles = db.relationship('NewsArticle', back_populates='source')
 
+    def __repr__(self):
+        return f"<NewsSource {self.source}>"
+
 class NewsTopic(db.Model):
     __tablename__ = 'news_topic'
     id = db.Column(db.Integer, primary_key=True)
@@ -95,6 +107,10 @@ class NewsTopic(db.Model):
 
     # Relationship to NewsArticle
     article = db.relationship('NewsArticle', backref=db.backref('topics', lazy=True))
+
+    def __repr__(self):
+        return f"<NewsTopic {self.topic} Score: {self.relevance_score}>"
+
 
 class TickerSentiment(db.Model):
     __tablename__ = 'ticker_sentiment'
@@ -107,6 +123,9 @@ class TickerSentiment(db.Model):
 
     # Relationship to NewsArticle
     article = db.relationship('NewsArticle', backref=db.backref('ticker_sentiments', lazy=True))
+
+    def __repr__(self):
+        return f"<TickerSentiment {self.ticker} Score: {self.ticker_sentiment_score} Label: {self.ticker_sentiment_label}>"
 
 stock_news_link = db.Table('stock_news_link',
     db.Column('stock_id', db.Integer, db.ForeignKey('stock_data.id'), primary_key=True),

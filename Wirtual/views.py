@@ -5,36 +5,33 @@ from datetime import datetime
 import requests
 
 
-  
 
 
-def fetch_and_save_fx_data(symbol):
-    api_key = current_app.config['ALPHA_VANTAGE_API_KEY']
+
+def fetch_and_save_fx_data(symbol,api_key):
     url = f'https://www.alphavantage.co/query?function=FX_DAILY&from_symbol={symbol[:3]}&to_symbol={symbol[3:]}&outputsize=full&apikey={api_key}'
     response = requests.get(url)
     if response.status_code == 200:
-        fx_data = response.json()
-        print("Odpowiedź z API:", fx_data)
-
+        fx_data = response.json()       
         # Sprawdź, czy klucz istnieje w odpowiedzi
-        if 'Time Series FX (Daily)' in fx_data:         
-
-            for date_str, daily_data in fx_data['Time Series FX (Daily)'].items():
-                print(f"Data for {date_str}: {daily_data}")  # Dodaj tę linię
-                open_price = round(float(daily_data['1. open']),2)
-                high_price = round(float(daily_data['2. high']),2)
-                low_price = round(float(daily_data['3. low']),2)
-                close_price = round(float(daily_data['4. close']),2)
-                average_price = round((open_price + high_price + low_price + close_price) / 4 ,2)
+        if 'Time Series FX (Daily)' not in fx_data:
+            return f"Key 'Time Series FX (Daily)' not found in API response for symbol {symbol}."
+        for date_str, daily_data in fx_data['Time Series FX (Daily)'].items():
+            print(f"Data for {date_str}: {daily_data}")  # Dodaj tę linię
+            open_price = round(float(daily_data['1. open']),2)
+            high_price = round(float(daily_data['2. high']),2)
+            low_price = round(float(daily_data['3. low']),2)
+            close_price = round(float(daily_data['4. close']),2)
+            average_price = round((open_price + high_price + low_price + close_price) / 4 ,2)
                 
-                new_entry = CurrencyData(
-                    symbol=symbol,
-                    date=datetime.strptime(date_str, '%Y-%m-%d').date(),
-                    open_price=open_price,
-                    high_price=high_price,
-                    low_price=low_price,
-                    close_price=close_price,
-                    average_price=average_price  # obliczona średnia cena
+            new_entry = CurrencyData(
+                symbol=symbol,
+                date=datetime.strptime(date_str, '%Y-%m-%d').date(),
+                open_price=open_price,
+                high_price=high_price,
+                low_price=low_price,
+                close_price=close_price,
+                average_price=average_price  # obliczona średnia cena
                 )
             db.session.add(new_entry)
         db.session.commit()
@@ -42,44 +39,42 @@ def fetch_and_save_fx_data(symbol):
     else:
         return "Failed to fetch data from API."
 
+def fetch_and_save_commodity_data(name, api_key):
     
-
-
-def fetch_and_save_commodity_data(name):
-    api_key = current_app.config['ALPHA_VANTAGE_API_KEY']
     url = f'https://www.alphavantage.co/query?function={name}&interval=daily&apikey={api_key}'
     response = requests.get(url)
     if response.status_code == 200:
         commodity_data = response.json()
-        for data_point in commodity_data['data']:
-            print(data_point)
-            # Sprawdzanie, czy wartość jest stringiem i zamiana przecinka na kropkę
-            value_str = data_point['value']
-            if isinstance(value_str, str):
-                value_str = value_str.replace(',', '.')
-            try:
-                price = float(value_str)
-            except ValueError:
-                continue  # Przechodzi do następnego elementu, jeśli konwersja się nie powiedzie
+        print(commodity_data)
 
-            new_commodity = CommodityData(
-                name=name,
-                date=datetime.strptime(data_point['date'], '%Y-%m-%d').date(),
-                price=price,
-                unit=commodity_data.get('unit', 'not provided')
-            )
-            db.session.add(new_commodity)
-        db.session.commit()
-        return "Commodity data fetched and saved successfully."
+        if 'data' in commodity_data:
+            for data_point in commodity_data['data']:
+                # Sprawdzanie, czy wartość jest stringiem i zamiana przecinka na kropkę
+                value_str = data_point['value']
+                if isinstance(value_str, str):
+                    value_str = value_str.replace(',', '.')
+                try:
+                    price = float(value_str)
+                except ValueError:
+                    continue  # Przechodzi do następnego elementu, jeśli konwersja się nie powiedzie
+
+                new_commodity = CommodityData(
+                    name=name,
+                    date=datetime.strptime(data_point['date'], '%Y-%m-%d').date(),
+                    price=price,
+                    unit=commodity_data.get('unit', 'not provided')
+                )
+                db.session.add(new_commodity)
+            db.session.commit()
+            return "Commodity data fetched and saved successfully."
+        else:
+            return "Expected key 'data' not found in the JSON response."
     else:
         return f"Failed to fetch data from API. Status code: {response.status_code}"
-    
+       
 
-  
-    
-
-def fetch_and_save_stock_data(symbol):
-    api_key = current_app.config['ALPHA_VANTAGE_API_KEY']
+def fetch_and_save_stock_data(symbol,api_key):
+   
     url = f'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&outputsize=compact&apikey={api_key}'
     response = requests.get(url)
     
@@ -209,13 +204,26 @@ def setup_routes(app):
             return jsonify({'status': 'success', 'message': result}), 200
         else:
             return jsonify({'status': 'error', 'message': result}), 500
-def auto_fetch_currency_pairs():
+def auto_fetch_currency_pairs(api_key):
    
-    base_currencies = ["PLN", "USD", "EUR", "JPY", "CHF", "GBP", "CNY"]
-    target_currencies = ["PLN", "USD", "EUR", "JPY", "CHF", "GBP", "CNY"]
+    base_currencies = ["PLN", "USD", "EUR", "CHF", "GBP"]
+    target_currencies = ["PLN", "USD", "EUR", "CHF", "GBP"]
 
     for base_currency in base_currencies:
         for target_currency in target_currencies:
             if base_currency != target_currency:
                 symbol = base_currency + target_currency
-                fetch_and_save_fx_data(symbol)
+                fetch_and_save_fx_data(symbol, api_key)
+def auto_fetch_commodity_data(api_key):
+    
+    commodities = ["BRENT", "NATURAL_GAS", "COPPER", "ALUMINUM", "COFFEE",]
+
+    for commodity in commodities:
+        fetch_and_save_commodity_data(commodity,api_key)
+def auto_fetch_stock_data(api_key):
+ 
+    # Lista symboli 10 najpopularniejszych spółek
+    stock_symbols = ["AAPL", "MSFT", "AMZN", "GOOGL", "FB", "TSLA", "BRK.A", "V", "JNJ", "WMT"]
+
+    for symbol in stock_symbols:
+        fetch_and_save_stock_data(symbol,api_key)
