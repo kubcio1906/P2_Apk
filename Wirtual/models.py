@@ -17,6 +17,7 @@ class CurrencyData(db.Model):
     close_price = db.Column(db.Float, nullable=False)
     average_price = db.Column(db.Float, nullable=False)
     related_news = db.relationship('NewsArticle', secondary='currency_news_link', back_populates='related_currencies')
+   
     def __init__(self, symbol, date, open_price, high_price, low_price, close_price, average_price):
         self.symbol = symbol
         self.date = date
@@ -35,7 +36,7 @@ class CommodityData(db.Model):
     price = db.Column(db.Float, nullable=False)
     unit = db.Column(db.String(50), nullable=True)
     related_news = db.relationship('NewsArticle', secondary='commodity_news_link', back_populates='related_commodities')
-
+    
     def __init__(self, name, date, price, unit):
         self.name = name
         self.date = date
@@ -66,15 +67,15 @@ class StockData(db.Model):
 class NewsArticle(db.Model):
     __tablename__ = 'news_article'
     id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(255), nullable=False)
+    title = db.Column(db.String(1000), nullable=False)
     url = db.Column(db.String(500), nullable=False)
     publication_date = db.Column(db.Date)
     summary = db.Column(db.Text, nullable=False)
     banner_image = db.Column(db.String(500), nullable=True)
-    source_id = db.Column(db.Integer, db.ForeignKey('news_source.id'), nullable=False)
+    source_id = db.Column(db.Integer, db.ForeignKey('news_source.id'), nullable=True)
     overall_sentiment_score = db.Column(db.Float, nullable=False)
     overall_sentiment_label = db.Column(db.String(50), nullable=False)
-
+    
     # Relationship to NewsSource
     source = db.relationship('NewsSource', back_populates='articles')
     related_currencies = db.relationship('CurrencyData', secondary='currency_news_link')
@@ -115,7 +116,7 @@ class NewsTopic(db.Model):
 class TickerSentiment(db.Model):
     __tablename__ = 'ticker_sentiment'
     id = db.Column(db.Integer, primary_key=True)
-    ticker = db.Column(db.String(10), nullable=False)
+    ticker = db.Column(db.String(20), nullable=False)
     relevance_score = db.Column(db.Float, nullable=False)
     ticker_sentiment_score = db.Column(db.Float, nullable=False)
     ticker_sentiment_label = db.Column(db.String(50), nullable=False)
@@ -126,6 +127,19 @@ class TickerSentiment(db.Model):
 
     def __repr__(self):
         return f"<TickerSentiment {self.ticker} Score: {self.ticker_sentiment_score} Label: {self.ticker_sentiment_label}>"
+
+class InflationData(db.Model):
+    __tablename__ = 'inflation_data'
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False)
+    value = db.Column(db.Float, nullable=False)
+
+    def __init__(self, date, value):
+        self.date = date
+        self.value = value
+
+    def __repr__(self):
+        return f"<InflationData date={self.date} value={self.value}>"
 
 stock_news_link = db.Table('stock_news_link',
     db.Column('stock_id', db.Integer, db.ForeignKey('stock_data.id'), primary_key=True),
