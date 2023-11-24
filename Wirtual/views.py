@@ -6,9 +6,6 @@ from validators import (
     validate_stock_data_structure, validate_currency_data_structure, validate_commodity_data_structure,
     validate_cpi_data_structure, validate_interest_rates_data_structure
 )
-from services import(
-auto_fetch_currency_data, auto_fetch_commodity_data,auto_fetch_inflation_data,auto_fetch_save_interest_rates_data,auto_fetch_stock_data
-)
 import numpy as np
 import logging
 
@@ -153,15 +150,17 @@ def fetch_and_save_stock_data(symbol, api_key):
                 average_price = round((open_price + high_price + low_price + close_price) / 4, 2)
                 volume = int(daily_data['5. volume'])
 
+            
+
                 existing_entry = db.session.query(StockData).filter(
-                    StockData.date == datetime.strptime(date_str, '%Y-%m-%d').date(),
+                    StockData.date == date_str,
                     StockData.symbol == symbol
                 ).first()
 
                 if existing_entry is None:
                     new_entry = StockData(
                         symbol=symbol,
-                        date=datetime.strptime(date_str, '%Y-%m-%d').date(),
+                        date=date_str,  # Poprawka tutaj
                         average_price=average_price,
                         volume=volume
                     )

@@ -1,4 +1,5 @@
-from views import fetch_and_save_commodity_data,fetch_and_save_fx_data,fetch_and_save_inflation_data,fetch_and_save_interest_rates_data,fetch_and_save_stock_data
+from views import fetch_and_save_commodity_data,fetch_and_save_fx_data,fetch_and_save_inflation_data,fetch_and_save_interest_rates_data,fetch_and_save_stock_data,data_exists_in_database
+import requests
 def auto_fetch_currency_data(api_key):
    
     base_currencies = ["EUR","USD","CHF"] #, "EUR", "CHF", "GBP"

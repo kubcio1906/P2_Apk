@@ -27,8 +27,9 @@ app = create_app()
 # Inicjalizacja i start harmonogramu w kontekście aplikacji
 def schedule_tasks():
     scheduler = BackgroundScheduler()
+    today_str = datetime.today().strftime('%Y-%m-%d')
     scheduler.add_job(
-        func=lambda: auto_fetch_currency_data(app.config['ALPHA_VANTAGE_API_KEY']) if not print(data_exists_in_database('currency_pairs', datetime.today().strftime('%Y-%m-%d'))) else None,
+        func=lambda: auto_fetch_currency_data(app.config['ALPHA_VANTAGE_API_KEY']) if not data_exists_in_database('currency_pairs', today_str) else None,
         trigger="cron",
         day_of_week='mon-fri',
         hour=1
@@ -36,7 +37,7 @@ def schedule_tasks():
 
     # Harmonogram dla commodity_data
     scheduler.add_job(
-        func=lambda: auto_fetch_commodity_data(app.config['ALPHA_VANTAGE_API_KEY']) if not data_exists_in_database('commodity_data', datetime.today().strftime('%Y-%m-%d')) else None,
+        func=lambda: auto_fetch_commodity_data(app.config['ALPHA_VANTAGE_API_KEY']) if not data_exists_in_database('commodity_data', today_str) else None,
         trigger="cron",
         day_of_week='mon-fri',
         hour=1
@@ -44,7 +45,7 @@ def schedule_tasks():
 
     # Harmonogram dla stock_data
     scheduler.add_job(
-        func=lambda: auto_fetch_stock_data(app.config['ALPHA_VANTAGE_API_KEY']) if not data_exists_in_database('stock_data',datetime.today().strftime('%Y-%m-%d')) else None,
+        func=lambda: auto_fetch_stock_data(app.config['ALPHA_VANTAGE_API_KEY']) if not data_exists_in_database('stock_data',today_str) else None,
         trigger="cron",
         day_of_week='mon-fri',
         hour=1
@@ -52,7 +53,7 @@ def schedule_tasks():
 
     # Harmonogram dla inflation_data
     scheduler.add_job(
-        func=lambda: auto_fetch_inflation_data(app.config['ALPHA_VANTAGE_API_KEY']) if not data_exists_in_database('inflation_data',datetime.today().strftime('%Y-%m-%d')) else None,
+        func=lambda: auto_fetch_inflation_data(app.config['ALPHA_VANTAGE_API_KEY']) if not data_exists_in_database('inflation_data',today_str) else None,
         trigger="cron",
         day=14,  # Pierwszy dzień każdego miesiąca
         hour=1
@@ -60,7 +61,7 @@ def schedule_tasks():
     
     # Harmonogram dla retail_sales_data
     scheduler.add_job(
-        func=lambda: auto_fetch_save_interest_rates_data(app.config['ALPHA_VANTAGE_API_KEY']) if not data_exists_in_database('interest_rates_data', datetime.today().strftime('%Y-%m-%d')) else None,
+        func=lambda: auto_fetch_save_interest_rates_data(app.config['ALPHA_VANTAGE_API_KEY']) if not data_exists_in_database('interest_rates_data', today_str) else None,
         
         trigger="cron",
         day=19,  # Pierwszy dzień każdego miesiąca

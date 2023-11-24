@@ -24,7 +24,7 @@ def validate_currency_data_structure(data):
    
 
     # Walidacja Meta Data
-    meta_keys = ["1. Information", "2. From Symbol", "3. To Symbol", "4. Last Refreshed", "5. Interval", "6. Output Size", "7. Time Zone"]
+    meta_keys = ["1. Information", "2. From Symbol", "3. To Symbol", "4. Output Size", "5. Last Refreshed", "6. Time Zone"]
     for key in meta_keys:
         if key not in data.get("Meta Data", {}):
             return False, f"Missing key in Meta Data: {key}"
