@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_restful import Api
 from extensions import db, migrate
-from views import(
+from services import(
     auto_fetch_currency_data, auto_fetch_commodity_data, auto_fetch_stock_data, auto_fetch_inflation_data,auto_fetch_save_interest_rates_data,data_exists_in_database
     )
 from apscheduler.schedulers.background import BackgroundScheduler
