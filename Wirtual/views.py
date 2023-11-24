@@ -1,12 +1,11 @@
-from flask import  jsonify,current_app
 from extensions import db
-from models import CurrencyData, CommodityData, StockData, NewsSource, NewsArticle, NewsTopic, TickerSentiment, InflationData, commodity_news_link, currency_news_link, stock_news_link
+from models import CurrencyData, CommodityData, StockData,CPI_Data, InterestRateData
 from datetime import datetime
 import requests
-from sqlalchemy.exc import SQLAlchemyError
-
-
-
+from validators import (
+    validate_stock_data_structure, validate_currency_data_structure, validate_commodity_data_structure,
+    validate_cpi_data_structure, validate_interest_rates_data_structure
+)
 
 def fetch_and_save_fx_data(symbol,api_key):
     url = f'https://www.alphavantage.co/query?function=FX_DAILY&from_symbol={symbol[:3]}&to_symbol={symbol[3:]}&outputsize=full&apikey={api_key}'
@@ -14,13 +13,20 @@ def fetch_and_save_fx_data(symbol,api_key):
     try:
         response = requests.get(url)
         response.raise_for_status()
-
         fx_data = response.json()
+    
+         # Walidacja struktury danych
+        is_valid, message = validate_currency_data_structure(fx_data)
+        if not is_valid:
+            return message  # Zwraca komunikat o błędzie, jeśli dane są niepoprawne
+
+
+       
         if 'Time Series FX (Daily)' not in fx_data:
             return f"Key 'Time Series FX (Daily)' not found in API response for symbol {symbol}."
 
         for date_str, daily_data in fx_data['Time Series FX (Daily)'].items():
-            print(f"Data for {date_str}: {daily_data}")  # Dodaj tę linię
+            
             open_price = round(float(daily_data['1. open']),2)
             high_price = round(float(daily_data['2. high']),2)
             low_price = round(float(daily_data['3. low']),2)
@@ -60,6 +66,10 @@ def fetch_and_save_commodity_data(name, api_key):
         response.raise_for_status()
 
         commodity_data = response.json()
+        is_valid, message =  validate_commodity_data_structure(commodity_data)
+        if not is_valid:
+            return message  # Zwraca komunikat o błędzie, jeśli dane są niepoprawne
+       
         if 'data' not in commodity_data:
             return "Expected key 'data' not found in the JSON response."
         for data_point in commodity_data['data']:
@@ -95,6 +105,10 @@ def fetch_and_save_stock_data(symbol,api_key):
         response.raise_for_status()
 
         stock_data_json = response.json()
+         # Walidacja struktury danych
+        is_valid, message = validate_stock_data_structure(stock_data_json)
+        if not is_valid:
+            return message  # Zwraca komunikat o błędzie, jeśli dane są niepoprawne
         if 'Time Series (Daily)' not in stock_data_json:
             return "Expected key 'Time Series (Daily)' not found in the JSON response."
 
@@ -125,267 +139,79 @@ def fetch_and_save_stock_data(symbol,api_key):
     except ValueError:
         return "Invalid JSON response from API."
 
-
 def fetch_and_save_inflation_data(api_key):
     url = f'https://www.alphavantage.co/query?function=CPI&interval=monthly&apikey={api_key}'
-    response = requests.get(url)
-    if response.status_code == 200:
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
         inflation_data = response.json()
-        if 'data' in inflation_data:
-            for data_point in inflation_data['data']:
-                date = datetime.strptime(data_point['date'], '%Y-%m-%d').date()
-                value = float(data_point['value'])
-
-                # Sprawdzanie, czy dane za ten miesiąc już istnieją
-                existing_entry = InflationData.query.filter_by(date=date).first()
-                if not existing_entry:
-                    new_entry = InflationData(date=date, value=value)
-                    db.session.add(new_entry)
-            db.session.commit()
-            return "Inflation data fetched and saved successfully."
-        else:
-            return "Expected key 'data' not found in the JSON response."
-    else:
-        return "Failed to fetch data from API."
-
-def fetch_and_save_news_data(api_key, tickers=None, topics=None, time_from=None, time_to=None, sort='LATEST', limit=1000):
-    base_url = "https://www.alphavantage.co/query"
-    params = {
-        "function": "NEWS_SENTIMENT",
-        "apikey": api_key,
-        "tickers": tickers,
-        "topics": topics,
-        "time_from": time_from,
-        "time_to": time_to,
-        "sort": sort,
-        "limit": limit
-    }
-    
-    response = requests.get(base_url, params=params)
-    if response.status_code == 200:
-        news_data = response.json()
-        print(news_data)
-        if 'feed' in news_data:
-            for item in news_data['feed']:
-                # Konwersja czasu publikacji na obiekt datetime
-                time_published = datetime.strptime(item['time_published'], '%Y%m%dT%H%M%S')
-
-                # Utwórz i dodaj artykuł wiadomości
-                article = NewsArticle(
-                    title=item['title'],
-                    url=item['url'],
-                    publication_date=time_published,
-                    summary=item['summary'],
-                    banner_image=item.get('banner_image'),
-                    overall_sentiment_score=item.get('overall_sentiment_score', 0.0),
-                    overall_sentiment_label=item.get('overall_sentiment_label', 'Neutral')
-                )
-                db.session.add(article)
-                db.session.flush()  # To pozwala na odzyskanie ID dla obiektu przed zapisem
-
-                # Dodaj informacje o tematach
-                for topic in item.get('topics', []):
-                    new_topic = NewsTopic(
-                        topic=topic['topic'],
-                        relevance_score=float(topic['relevance_score']),
-                        article_id=article.id
-                    )
-                    db.session.add(new_topic)
-
-                # Dodaj informacje o sentymentach tickerów
-                for ticker_sentiment in item.get('ticker_sentiment', []):
-                    new_ticker_sentiment = TickerSentiment(
-                        ticker=ticker_sentiment['ticker'],
-                        relevance_score=float(ticker_sentiment['relevance_score']),
-                        ticker_sentiment_score=float(ticker_sentiment['ticker_sentiment_score']),
-                        ticker_sentiment_label=ticker_sentiment['ticker_sentiment_label'],
-                        article_id=article.id
-                    )
-                    db.session.add(new_ticker_sentiment)
-                
-            db.session.commit()
-            process_news_data(news_data)
-            return "News data fetched and saved successfully."
-        else:
-            return "Expected key 'feed' not found in the JSON response."
-    else:
-        return "Failed to fetch data from API."
-def process_news_data(json_data):
-    max_ticker_length = 20  # Zakładając, że maksymalna długość to 10 znaków
-    # Zakładam, że już masz sesję bazy danych
-    for entry in json_data['feed']:
-        # Utwórz i dodaj artykuł wiadomości
-        article = NewsArticle(
-            title=entry['title'],
-            url=entry['url'],
-            publication_date=datetime.strptime(entry['time_published'], '%Y%m%dT%H%M%S'),
-            summary=entry['summary'],
-            banner_image=entry['banner_image'],
-            overall_sentiment_score=entry['overall_sentiment_score'],
-            overall_sentiment_label=entry['overall_sentiment_label']
-        )
-        db.session.add(article)
-        db.session.flush()  # Pobierz ID dla artykułu przed zapisaniem
-
-        # Utwórz i dodaj źródło, jeśli jeszcze nie istnieje
-        source = NewsSource.query.filter_by(source_domain=entry['source_domain']).first()
-        if not source:
-            source = NewsSource(
-                source=entry['source'],
-                category_within_source=entry['category_within_source'],
-                source_domain=entry['source_domain']
-            )
-            db.session.add(source)
-            db.session.flush()  # Pobierz ID dla źródła przed zapisaniem
+        is_valid, message =  validate_cpi_data_structure(inflation_data)
+        if not is_valid:
+            return message  # Zwraca komunikat o błędzie, jeśli dane są niepoprawne
+        if 'data' not in inflation_data:
+            return f"Key 'data' not found in API response."
         
-        # Przypisz źródło do artykułu
-        article.source_id = source.id
+        for data_point in inflation_data['data']:
+            date = datetime.strptime(data_point['date'], '%Y-%m-%d').date()
+            value = float(data_point['value'])
 
-        # Dodaj tematy
-        for topic in entry['topics']:
-            new_topic = NewsTopic(
-                topic=topic['topic'],
-                relevance_score=topic['relevance_score'],
-                article_id=article.id
-            )
-            db.session.add(new_topic)
-
-        # Dodaj sentymenty tickerów
-        for ticker_sentiment in entry['ticker_sentiment']:
-            new_ticker_sentiment = TickerSentiment(
-                ticker=ticker_sentiment['ticker'],
-                relevance_score=ticker_sentiment['relevance_score'],
-                ticker_sentiment_score=ticker_sentiment['ticker_sentiment_score'],
-                ticker_sentiment_label=ticker_sentiment['ticker_sentiment_label'],
-                article_id=article.id
-            )
-            db.session.add(new_ticker_sentiment)
-
-        for ticker_sentiment in entry['ticker_sentiment']:
-            ticker = ticker_sentiment['ticker'][:max_ticker_length]  # Obcinanie tickeru do maksymalnej długości
-
-            new_ticker_sentiment = TickerSentiment(
-                ticker=ticker,
-                relevance_score=float(ticker_sentiment['relevance_score']),
-                ticker_sentiment_score=float(ticker_sentiment['ticker_sentiment_score']),
-                ticker_sentiment_label=ticker_sentiment['ticker_sentiment_label'],
-                article_id=article.id
-            )
-            db.session.add(new_ticker_sentiment)
-        for currency in find_related_currencies(entry):
-            association = currency_news_link.insert().values(
-                currency_data_id=currency.id,
-                news_article_id=article.id
-            )
-            db.session.execute(association)
-
-        # Przypisanie artykułu do towarów
-        for commodity in find_related_commodities(entry):
-            association = commodity_news_link.insert().values(
-                commodity_data_id=commodity.id,
-                news_article_id=article.id
-            )
-            db.session.execute(association)
-
-        # Przypisanie artykułu do akcji
-        for stock in find_related_stocks(entry):
-            association = stock_news_link.insert().values(
-                stock_id=stock.id,
-                news_article_id=article.id
-            )
-            db.session.execute(association)
-
-    db.session.commit()
-
-def find_related_currencies(news_item):
-    related_currencies = []
-    title = news_item['title']
-    currency_symbols = ["USD", "EUR", "PLN"]
-    for symbol in currency_symbols:
-        if symbol in title:
-            try:
-                currency = CurrencyData.query.filter_by(symbol=symbol).first()
-                if currency:
-                    related_currencies.append(currency)
-            except SQLAlchemyError as e:
-                current_app.logger.error(f"Błąd bazy danych przy próbie wyszukania waluty: {e}")
-    return related_currencies
+            new_cpi_data = CPI_Data(date=date, value=value)
+            db.session.add(new_cpi_data)
+        db.session.commit()
+        return "CPI data fetched and saved successfully."
+    except requests.exceptions.RequestException as e:
+        return f"Request Exception: {e}"
+    except ValueError:
+        return "Invalid JSON response from API."
     
-def find_related_commodities(news_item):
-    related_commodities = []
-    title = news_item['title']
-    # Lista towarów, które mogą być wspomniane w artykule
-    commodity_names = ["BRENT", "NATURAL_GAS", "COPPER", "ALUMINUM", "COFFEE"]
-    for name in commodity_names:
-        if name in title:
-            try:
-                commodity = CommodityData.query.filter_by(name=name).first()
-                if commodity:
-                    related_commodities.append(commodity)
-            except SQLAlchemyError as e:
-                current_app.logger.error(f"Błąd bazy danych przy próbie wyszukania commodity: {e}")
-    return related_commodities
 
-def find_related_stocks(news_item):
-    related_stocks = []
-    title = news_item['title']
-
-    # Zakładamy, że mamy listę tickerów giełdowych
-    stock_symbols = ["AAPL", "MSFT", "AMZN", "GOOGL", "FB", "TSLA", "BRK.A", "V", "JNJ", "WMT","NVDA"]
-
-    for symbol in stock_symbols:
-        if symbol in title:
-            try:
-                stock = StockData.query.filter_by(symbol=symbol).first()
-                if stock:
-                    related_stocks.append(stock)
-            except SQLAlchemyError as e:
-                current_app.logger.error(f"Błąd bazy danych przy próbie wyszukania stock: {e}")
-
-    return related_stocks
-
-
-
-def setup_routes(app):
-
-  #  @app.route('/fetch_fx_data/<string:symbol>', methods=['GET'])
-   # def fetch_fx_data_view(symbol):
-    #    result = fetch_and_save_fx_data(symbol)
-    #   if result == "Data fetched and saved successfully.":
-    #        response = {"status": "success", "message": result}
-    #    else:
-    #        response = {"status": "error", "message": result}
-    #    return jsonify(response)
+def fetch_and_save_interest_rates_data(api_key):
+    url = f'https://www.alphavantage.co/query?function=FEDERAL_FUNDS_RATE&interval=monthly&apikey={api_key}'
     
-    # Endpoint do pobierania danych o towarach
-    
-    @app.route('/fetch_commodity_data/<string:name>', methods=['GET'])
-    def fetch_commodity_data_view(name):
-        result = fetch_and_save_commodity_data(name)
-        if result == "Commodity data fetched and saved successfully.":
-            return jsonify({'status': 'success', 'message': result}), 200
-        else:
-            return jsonify({'status': 'error', 'message': result}), 500
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        interest_rates_data = response.json()
+        is_valid, message =  validate_interest_rates_data_structure(interest_rates_data)
+        if not is_valid:
+            return message  # Zwraca komunikat o błędzie, jeśli dane są niepoprawne
+        if 'data' not in interest_rates_data:
+            return f"Key 'data' not found in API response."
 
-    @app.route('/fetch_stock_data/<string:symbol>', methods=['GET'])
-    def fetch_stock_data(symbol):
-      
-        result = fetch_and_save_stock_data(symbol)
-        if result == "Stock data fetched and saved successfully.":
-           response = {"status": "success", "message": result}
-        else:
-            response = {"status": "error", "message": result}
-        return jsonify(response)
+        for data_point in interest_rates_data['data']:
+            date = datetime.strptime(data_point['date'], '%Y-%m-%d').date()
+            value = float(data_point['value'])
+
+            new_interest_rates_data = InterestRateData(date=date, value=value)
+            db.session.add(new_interest_rates_data)
+        db.session.commit()
+        return "Retail sales data fetched and saved successfully."
+    except requests.exceptions.RequestException as e:
+        return f"Request Exception: {e}"
+    except ValueError:
+        return "Invalid JSON response from API."
     
-    @app.route('/fetch_news_data/<string:ticker>', methods=['GET'])
-    def fetch_news_data(ticker):
-      
-        result = fetch_and_save_news_data(ticker)
-        if result == "News data fetched and saved successfully.":
-            return jsonify({'status': 'success', 'message': result}), 200
-        else:
-            return jsonify({'status': 'error', 'message': result}), 500
-def auto_fetch_currency_pairs(api_key):
+
+def data_exists_in_database(data_type, date):
+    date = datetime.strptime(date, '%Y-%m-%d').date()  # Konwersja stringa na obiekt daty
+   
+    if data_type == 'currency_pairs':
+        return db.session.query(CurrencyData).filter(CurrencyData.date == date).count() > 0
+    elif data_type == 'commodity_data':
+        return db.session.query(CommodityData).filter(CommodityData.date == date).count() > 0
+    elif data_type == 'stock_data':
+        return db.session.query(StockData).filter(StockData.date == date).count() > 0
+    elif data_type == 'inflation_data':
+        return db.session.query(CPI_Data).filter(CPI_Data.date == date).count() > 0
+    elif data_type == 'interest_rates_data':
+        return db.session.query(InterestRateData).filter(InterestRateData.date == date).count() > 0
+    else:
+        raise ValueError("Nieznany typ danych")
+
+    return False
+    
+   
+def auto_fetch_currency_data(api_key):
    
     base_currencies = ["EUR","USD","CHF"] #, "EUR", "CHF", "GBP"
     target_currencies = ["PLN"] #, "EUR", "CHF", "GBP"
@@ -410,7 +236,10 @@ def auto_fetch_stock_data(api_key):
         fetch_and_save_stock_data(symbol,api_key)
 
 def auto_fetch_inflation_data(api_key):
+    
     fetch_and_save_inflation_data(api_key)
 
-def auto_fetch_news_data(api_key):
-    fetch_and_save_news_data(api_key)
+def auto_fetch_save_interest_rates_data(api_key):
+    
+    fetch_and_save_interest_rates_data(api_key)
+
