@@ -1,6 +1,6 @@
 from flask import Flask
 from flask_restful import Api
-from extensions import db, migrate
+from extensions import db,migrate
 from services import(
     auto_fetch_currency_data, auto_fetch_commodity_data, auto_fetch_stock_data, auto_fetch_inflation_data,auto_fetch_save_interest_rates_data,data_exists_in_database
     )
@@ -73,16 +73,16 @@ if __name__ == '__main__':
     with app.app_context():
         today = datetime.today().strftime('%Y-%m-%d')
       
-        if not data_exists_in_database('currency_pairs', today):
-            auto_fetch_currency_data(app.config['ALPHA_VANTAGE_API_KEY'])
-        if not data_exists_in_database('commodity_data', today):
-            auto_fetch_commodity_data(app.config['ALPHA_VANTAGE_API_KEY'])
+        #if not data_exists_in_database('currency_pairs', today):
+            #auto_fetch_currency_data(app.config['ALPHA_VANTAGE_API_KEY'])
+        #if not data_exists_in_database('commodity_data', today):
+            #auto_fetch_commodity_data(app.config['ALPHA_VANTAGE_API_KEY'])
         if not data_exists_in_database('stock_data', today):
             auto_fetch_stock_data(app.config['ALPHA_VANTAGE_API_KEY'])
-        if not data_exists_in_database('inflation_data', today):
-            auto_fetch_inflation_data(app.config['ALPHA_VANTAGE_API_KEY'])
-        if not data_exists_in_database('interest_rates_data', today):
-            auto_fetch_save_interest_rates_data(app.config['ALPHA_VANTAGE_API_KEY'])
+        #if not data_exists_in_database('inflation_data', today):
+            #auto_fetch_inflation_data(app.config['ALPHA_VANTAGE_API_KEY'])
+        #if not data_exists_in_database('interest_rates_data', today):
+            #auto_fetch_save_interest_rates_data(app.config['ALPHA_VANTAGE_API_KEY'])
         
        
 

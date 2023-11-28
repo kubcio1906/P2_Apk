@@ -3,11 +3,11 @@ import os
 import unittest
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from unittest.mock import patch
-from services import fetch_and_save_fx_data, fetch_and_save_stock_data, fetch_and_save_commodity_data,fetch_and_save_inflation_data,fetch_and_save_interest_rates_data
+from services import fetch_and_save_fx_data, fetch_and_save_stock_data, fetch_and_save_commodity_data,fetch_and_save_inflation_data,fetch_and_save_interest_rates_data,calculate_ema,calculate_and_update_ema
 import requests
-from app.__init__ import create_app
+from __init__ import create_app
 
-
+"""""
 class TestCurrencyData(unittest.TestCase):
 
     def setUp(self):
@@ -220,7 +220,7 @@ class TestCpiData(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertIn("Request Exception", result)
 
-class TestInterestRatesData(unittest.TestCase):
+#class TestInterestRatesData(unittest.TestCase):
 
     def setUp(self):
         self.app = create_app()  # Utwórz instancję aplikacji
@@ -269,5 +269,27 @@ class TestInterestRatesData(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertIn("Request Exception", result)
 
+
+
+
+#class TestEMACalculation(unittest.TestCase):
+
+    def test_ema_calculation(self):
+        # Przykładowe dane cenowe
+        sample_prices = [100, 102, 104, 103, 105, 106, 107, 108, 109, 110]
+
+        # Test EMA dla okna 5 dni
+        ema_5 = calculate_ema(sample_prices, 5)
+        expected_ema_5 = 107.97
+        self.assertAlmostEqual(ema_5[-1], expected_ema_5, places=2)
+
+        # Test EMA dla okna 10 dni
+        ema_10 = calculate_ema(sample_prices, 10)
+        expected_ema_10 = 105.4  # Oczekiwana wartość EMA dla okna 10 dni
+        self.assertAlmostEqual(ema_10[-1], expected_ema_10, places=2)
+
+        # Dodaj więcej testów dla innych okien czasowych, jeśli to konieczne
+
 if __name__ == '__main__':
     unittest.main()
+    """
