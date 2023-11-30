@@ -2,7 +2,7 @@
 def validate_stock_data_structure(data):
    
     # Walidacja Meta Data
-    meta_keys = ["1. Information", "2. Symbol", "3. Last Refreshed", "4. Interval", "5. Output Size", "6. Time Zone"]
+    meta_keys = ["1. Information", "2. Symbol", "3. Last Refreshed", "4. Output Size", "5. Time Zone"]
     for key in meta_keys:
         if key not in data.get("Meta Data", {}):
             return False, f"Missing key in Meta Data: {key}"

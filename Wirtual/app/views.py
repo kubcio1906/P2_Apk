@@ -8,7 +8,7 @@ from validators import (
 )
 import numpy as np
 import logging
-
+from sqlalchemy.exc import SQLAlchemyError
 # Konfiguracja logowania
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -125,7 +125,6 @@ def fetch_and_save_commodity_data(name, api_key):
         return "Invalid JSON response from API."
 
        
-# Funkcja do pobierania i zapisywania danych akcji
 def fetch_and_save_stock_data(symbol, api_key):
     url = f'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&outputsize=compact&apikey={api_key}'
     
@@ -133,16 +132,20 @@ def fetch_and_save_stock_data(symbol, api_key):
         response = requests.get(url)
         response.raise_for_status()
         stock_data_json = response.json()
-        print(stock_data_json)
+        logging.info(f"Odpowiedź API dla {symbol}: {stock_data_json}")  # Dodano dla lepszego logowania
+
         is_valid, message = validate_stock_data_structure(stock_data_json)
         if not is_valid:
+            logging.error(message)
             return message
 
         if 'Time Series (Daily)' not in stock_data_json:
+            logging.error("Expected key 'Time Series (Daily)' not found in the JSON response.")
             return "Expected key 'Time Series (Daily)' not found in the JSON response."
 
         for date_str, daily_data in stock_data_json['Time Series (Daily)'].items():
             if any(value is None for value in daily_data.values()):
+                logging.warning(f"Pominięto niekompletne dane dla daty {date_str}")
                 continue
 
             try:
@@ -153,8 +156,6 @@ def fetch_and_save_stock_data(symbol, api_key):
                 average_price = round((open_price + high_price + low_price + close_price) / 4, 2)
                 volume = int(daily_data['5. volume'])
 
-            
-
                 existing_entry = db.session.query(StockData).filter(
                     StockData.date == date_str,
                     StockData.symbol == symbol
@@ -163,22 +164,27 @@ def fetch_and_save_stock_data(symbol, api_key):
                 if existing_entry is None:
                     new_entry = StockData(
                         symbol=symbol,
-                        date=date_str,  # Poprawka tutaj
+                        date=date_str,
                         average_price=average_price,
                         volume=volume
                     )
                     db.session.add(new_entry)
-            except ValueError as e:
-                logging.error(f"Błąd konwersji danych akcji dla daty {date_str}: {e}")
-                continue
+                    logging.info(f"Dodano nowy wpis: {new_entry}")
+            except Exception as e:  # Ulepszona obsługa wyjątków
+                logging.error(f"Błąd podczas dodawania wpisu dla {date_str}: {e}")
 
+        # Zapisanie zmian w bazie danych
         db.session.commit()
+        logging.info("Zatwierdzono transakcję w bazie danych.")
     except requests.exceptions.RequestException as e:
         logging.error(f"Request Exception: {e}")
         return f"Request Exception: {e}"
     except ValueError as e:
         logging.error(f"Invalid JSON response from API: {e}")
         return "Invalid JSON response from API."
+    except Exception as e:  # Dodatkowa obsługa ogólnych wyjątków
+        logging.error(f"Ogólny błąd: {e}")
+        db.session.rollback()
 
 # Funkcja do pobierania i zapisywania danych o inflacji
 def fetch_and_save_inflation_data(api_key):
