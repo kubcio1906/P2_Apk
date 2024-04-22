@@ -1,11 +1,10 @@
 from extensions import db
 from datetime import datetime
-# Instancja SQLAlchemy powinna być stworzona w głównym pliku aplikacji i importowana tutaj
-# from yourapp import db
 
 
 
-# Model danych reprezentujący dane FX Daily
+
+
 class CurrencyData(db.Model):
     __tablename__ = 'currency_data'
     id = db.Column(db.Integer, primary_key=True)
@@ -51,7 +50,7 @@ class StockData(db.Model):
     symbol = db.Column(db.String(10), nullable=False)
     date = db.Column(db.Date, nullable=False)
     close_price = db.Column(db.Float, nullable=False)
-    volume = db.Column(db.BigInteger, nullable=False)  # Wolumen może być dużą liczbą, więc używamy BigInteger
+    volume = db.Column(db.BigInteger, nullable=False)  
 
    
 
@@ -118,16 +117,16 @@ class EmaData(db.Model):
     symbol = db.Column(db.String(10), nullable=False)
     date = db.Column(db.Date, nullable=False)
     ema = db.Column(db.Float, nullable=False)
-    time_period = db.Column(db.Integer, nullable=False)  # Dodane pole określające okres EMA
+    time_period = db.Column(db.Integer, nullable=False)  
     
-    def __init__(self, symbol, date, ema, time_period):  # Dodaj time_period jako parametr
+    def __init__(self, symbol, date, ema, time_period):  
         self.symbol = symbol
         self.date = date
         self.ema = ema
-        self.time_period = time_period  # Inicjalizacja wartości time_period
+        self.time_period = time_period  
         
     def __repr__(self):
-        # Zaktualizuj reprezentację stringową, aby uwzględnić time_period
+        
         return f"<EmaData symbol={self.symbol} date={self.date} EMA={self.ema} time_period={self.time_period}>"
 
 class RsiData(db.Model):
@@ -153,11 +152,11 @@ class CorrelationData(db.Model):
     __tablename__ = 'correlation_data'
 
     id = db.Column(db.Integer, primary_key=True)
-    asset_type = db.Column(db.String(50), nullable=False)  # np. 'Currency', 'Commodity', 'Stock'
-    asset_symbol = db.Column(db.String(50), nullable=False)  # Symbol aktywa, np. 'EURPLN', 'BRENT', 'AAPL'
-    correlation_with_cpi = db.Column(db.Float, nullable=True)  # Korelacja z CPI
-    correlation_with_interest_rate = db.Column(db.Float, nullable=True)  # Korelacja ze stopami procentowymi
-    date = db.Column(db.Date, nullable=False)  # Data, dla której obliczono korelację
+    asset_type = db.Column(db.String(50), nullable=False)  
+    asset_symbol = db.Column(db.String(50), nullable=False)  
+    correlation_with_cpi = db.Column(db.Float, nullable=True)  
+    correlation_with_interest_rate = db.Column(db.Float, nullable=True)  
+    date = db.Column(db.Date, nullable=False)  
 
     def __init__(self, asset_type, asset_symbol, correlation_with_cpi, correlation_with_interest_rate, date):
         self.asset_type = asset_type
@@ -168,3 +167,4 @@ class CorrelationData(db.Model):
 
     def __repr__(self):
         return f"<CorrelationData {self.asset_type} {self.asset_symbol} CPI_Corr: {self.correlation_with_cpi} IR_Corr: {self.correlation_with_interest_rate} Date: {self.date}>"
+    

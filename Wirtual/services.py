@@ -7,7 +7,6 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, select, update, extract
 import requests
 import logging
-import finnhub
 import pandas as pd
 def auto_fetch_currency_data(api_key):
    
@@ -27,7 +26,7 @@ def auto_fetch_commodity_data(api_key):
         fetch_and_save_commodity_data(commodity,api_key)
 def auto_fetch_stock_data(api_key):
  
-    # Lista symboli 10 najpopularniejszych spółek
+    # Lista symboli  najpopularniejszych spółek
     stock_symbols = ['MSFT','IBM']
 
     for symbol in stock_symbols:
@@ -48,7 +47,7 @@ def calculate_inflation_from_cpi(db_session):
     # Pobierz wszystkie rekordy CPI, posortowane od najstarszego do najnowszego
     cpi_records = db_session.query(CPI_Data).order_by(CPI_Data.date).all()
 
-    # Przechodzimy przez wszystkie rekordy CPI, pomijając pierwszy
+   
     for i in range(1, len(cpi_records)):
         current_record = cpi_records[i]
         previous_record = cpi_records[i - 1]
@@ -67,7 +66,7 @@ def calculate_inflation_from_cpi(db_session):
                 logging.error(f"Division by zero error for CPI record with id {previous_record.id}: {e}")
                 continue
 
-    # Zatwierdź zmiany w bazie danych
+   
     db_session.commit()
 
 def auto_fetch_ema_data(api_key, symbols, intervals, time_periods, series_types):

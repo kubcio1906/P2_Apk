@@ -34,71 +34,71 @@ def schedule_tasks():
     scheduler.add_job(
         func=lambda: auto_fetch_currency_data(app.config['ALPHA_VANTAGE_API_KEY']) if not data_exists_in_database('currency_pairs', today_str) else None,
         trigger="cron",
-        day_of_week='mon-fri',
+        day_of_week='mon',
         hour=1
     )
 
-    # Harmonogram dla commodity_data
+
     scheduler.add_job(
         func=lambda: auto_fetch_commodity_data(app.config['ALPHA_VANTAGE_API_KEY']) if not data_exists_in_database('commodity_data', today_str) else None,
         trigger="cron",
-        day_of_week='mon-fri',
+        day_of_week='tue',
         hour=1
     )
 
-    # Harmonogram dla stock_data
+    
     scheduler.add_job(
         func=lambda: auto_fetch_stock_data(app.config['ALPHA_VANTAGE_API_KEY']) if not data_exists_in_database('stock_data',today_str) else None,
         trigger="cron",
-        day_of_week='mon-fri',
+        day_of_week='wed',
         hour=1
     )
 
-    # Harmonogram dla inflation_data
+ 
     scheduler.add_job(
         func=lambda: auto_fetch_inflation_data(app.config['ALPHA_VANTAGE_API_KEY']) if not data_exists_in_database('inflation_data',today_str) else None,
         trigger="cron",
-        day=14,  # Pierwszy dzień każdego miesiąca
+        day=14,  
         hour=1
     )
     
-    # Harmonogram dla retail_sales_data
+  
     scheduler.add_job(
         func=lambda: auto_fetch_save_interest_rates_data(app.config['ALPHA_VANTAGE_API_KEY']) if not data_exists_in_database('interest_rates_data', today_str) else None,
         
-        day=19,  # Pierwszy dzień każdego miesiąca
+        day=19,  
         hour=1
     )
+    
     scheduler.start()
 if __name__ == '__main__':
     
     with app.app_context():
         today = datetime.today().strftime('%Y-%m-%d')
-      
-        #if not data_exists_in_database('currency_pairs', today):
-            #auto_fetch_currency_data(app.config['ALPHA_VANTAGE_API_KEY'])
-        #if not data_exists_in_database('commodity_data', today):
-            #auto_fetch_commodity_data(app.config['ALPHA_VANTAGE_API_KEY'])
+        symbols = ['IBM','MSFT']  # Lista symboli akcji
+        if not data_exists_in_database('currency_pairs', today):
+            auto_fetch_currency_data(app.config['ALPHA_VANTAGE_API_KEY'])
+        if not data_exists_in_database('commodity_data', today):
+            auto_fetch_commodity_data(app.config['ALPHA_VANTAGE_API_KEY'])
         if not data_exists_in_database('stock_data', today):
             auto_fetch_stock_data(app.config['ALPHA_VANTAGE_API_KEY'])
-        #if not data_exists_in_database('inflation_data', today):
-            #auto_fetch_inflation_data(app.config['ALPHA_VANTAGE_API_KEY'],db.session)
-        #if not data_exists_in_database('interest_rates_data', today):
-            #auto_fetch_save_interest_rates_data(app.config['ALPHA_VANTAGE_API_KEY'])
-        #symbols = ['IBM', 'MSFT']  # Lista symboli dla EMA
-        #intervals = ['daily']  # Lista interwałów czasowych
-        #time_periods = [50, 100]  # Lista okresów czasowych dla EMA
-        #series_types = ['close']  # Lista typów serii danych
-        #auto_fetch_ema_data(app.config['ALPHA_VANTAGE_API_KEY'], symbols, intervals, time_periods, series_types)
-        #symbols = ['CHFPLN','EURPLN','USDPLN','JPYPLN','IBM','MSFT']  # Lista symboli akcji
-        #intervals = ['daily']  # Lista interwałów czasowych
-        #time_periods = [14]  # Lista okresów czasowych dla RSI
-        #series_types = ['close']  # Typ serii danych, np. cena zamknięcia
-        #if not data_exists_in_database('rsi_data', today):
-            #Pobieranie danych RSI, jeśli jeszcze nie istnieją
-            #auto_fetch_rsi_data(app.config['ALPHA_VANTAGE_API_KEY'], symbols, intervals, time_periods, series_types)
-        #calculate_and_save_correlations()
-        #populate_time_dimension()
+        if not data_exists_in_database('inflation_data', today):
+            auto_fetch_inflation_data(app.config['ALPHA_VANTAGE_API_KEY'],db.session)
+        if not data_exists_in_database('interest_rates_data', today):
+            auto_fetch_save_interest_rates_data(app.config['ALPHA_VANTAGE_API_KEY'])
+        intervals = ['daily']  # Lista interwałów czasowych
+        time_periods = [50, 100]  # Lista okresów czasowych dla EMA
+        series_types = ['close']  # Lista typów serii danych
+        auto_fetch_ema_data(app.config['ALPHA_VANTAGE_API_KEY'], symbols, intervals, time_periods, series_types)
+        intervals = ['daily']  # Lista interwałów czasowych
+        time_periods = [14]  # Lista okresów czasowych dla RSI
+        series_types = ['close']  # Typ serii danych, np. cena zamknięcia
+        if not data_exists_in_database('rsi_data', today):
+            
+            auto_fetch_rsi_data(app.config['ALPHA_VANTAGE_API_KEY'], symbols, intervals, time_periods, series_types)
+    
+        calculate_and_save_correlations()
+        populate_time_dimension()
         
     
 

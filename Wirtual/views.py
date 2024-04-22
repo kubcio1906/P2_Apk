@@ -278,6 +278,7 @@ def data_exists_in_database(data_type, date):
         return db.session.query(InterestRateData).filter(InterestRateData.date == date).count() > 0
     elif data_type == 'rsi_data':
         return db.session.query(RsiData).filter(RsiData.date == date).count() > 0
+    
 
     else:
         raise ValueError("Nieznany typ danych")
@@ -427,3 +428,4 @@ def calculate_and_save_correlations():
 
     session.commit()
     session.close()
+
